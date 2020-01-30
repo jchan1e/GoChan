@@ -50,17 +50,15 @@ int main(int argc, char** argv) {
       // Get Human player's next move
       bool success = false;
       do {
-        unsigned char i1, i2, j1, j2;
+        unsigned char i, j;
         cout << "Enter Player's Next Move\n";
         cin.clear();
-        cin >> i1 >> j1 >> i2 >> j2;
+        cin >> i >> j;
         //cout << int(i1) << " " << int(j1) << " " << int(i2) << " " << int(j2) << endl;
-        i1 -= 'A';
-        i2 -= 'A';
-        j1 -= '1';
-        j2 -= '1';
+        i -= 'A';
+        j -= '1';
         //cout << int(i1) << " " << int(j1) << " " << int(i2) << " " << int(j2) << endl;
-        Action B = {i1,j1,i2,j2};
+        Action B = {i,j};
         success = M.advance(B);
       } while (!success);
 
@@ -82,7 +80,7 @@ int main(int argc, char** argv) {
         usleep(n*1000000);
       stop = true;
       MCTthread.join();
-      cout << char('A'+A.i1) << 1+A.j1 << " " << char('A'+A.i2) << 1+A.j2 << endl;
+      cout << char('A'+A.i) << 1+A.j << endl;
       cout << 100*wins/visits << "\% chance of victory\n";
       cout << "node got " << visits << " of " << M.root->visits << " simulations run\n";
       // Make the MCT's suggested move
