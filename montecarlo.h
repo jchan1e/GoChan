@@ -69,17 +69,17 @@ class Node {
 class MonteCarloTree {
   public:
     Node* root;
-    bool White;
+    bool Black;
     Engine E;
     float Ce; // exploration bias parameter
     Neuralnet* N;
   public:
-    MonteCarloTree(bool white, float c, char* Agentfile) {
+    MonteCarloTree(bool black, float c, char* Agentfile) {
       Ce = c;
       Action A = {0};
-      White = white;
+      Black = black;
       root = new Node(NULL, A, E.getBoardState());
-      root->opponent = White;
+      root->opponent = Black;
       N = new Neuralnet(Agentfile);
     }
 
@@ -106,7 +106,8 @@ class MonteCarloTree {
       N->mtx.lock();
       if (!N->expanded) {
         N->expanded = true;
-        if (N->parent != NULL && N->parent->parent != NULL && N->parent->parent->parent != NULL &&  N->parent->parent->parent->parent != NULL &&
+        if (N->parent != NULL && N->parent->parent != NULL &&
+            N->parent->parent->parent != NULL &&  N->parent->parent->parent->parent != NULL &&
             N->state == N->parent->parent->parent->parent->state) {
           N->endstate = true;
           N->state.winner = 0.5;
@@ -127,63 +128,63 @@ class MonteCarloTree {
       N->mtx.unlock();
     }
 
-    float rollout(BoardState BS) {
+    float evaluate(BoardState BS) {
       // transcribe boardstate to NN input array and evaluate
       float BS_array[12*64+5] = {0.0};
       float result[2];
-      for (int i=0; i < 8; ++i) {
-        for (int j=0; j < 8; ++j) {
-          if (BS.board[i][j] != blank) {
-            int l;
-            switch (BS.board[i][j]) {
-              case w_pawn:
-                l = 0;
-                break;
-              case w_bishop:
-                l = 1;
-                break;
-              case w_knight:
-                l = 2;
-                break;
-              case w_rook:
-                l = 3;
-                break;
-              case w_queen:
-                l = 4;
-                break;
-              case w_king:
-                l = 5;
-                break;
-              case b_pawn:
-                l = 6;
-                break;
-              case b_bishop:
-                l = 7;
-                break;
-              case b_knight:
-                l = 8;
-                break;
-              case b_rook:
-                l = 9;
-                break;
-              case b_queen:
-                l = 10;
-                break;
-              case b_king:
-                l = 11;
-                break;
-              default:
-                l = 0; //shouldn't happen but just in case
-            }
-            BS_array[64*l + 8*i + j] = 1.0;
-          }
-        }
-      }
-      BS_array[12*64 + 0] = -1.0 + 2.0*(BS.turn%2);
-      BS_array[12*64 + 1] = BS.w_castle_kingside?1.0:0.0;
-      BS_array[12*64 + 2] = BS.w_castle_queenside?1.0:0.0;
-      BS_array[12*64 + 3] = BS.b_castle_kingside?1.0:0.0;
-      BS_array[12*64 + 4] = BS.b_castle_queenside?1.0:0.0;
+      //for (int i=0; i < 8; ++i) {
+      //  for (int j=0; j < 8; ++j) {
+      //    if (BS.board[i][j] != blank) {
+      //      int l;
+      //      switch (BS.board[i][j]) {
+      //        case w_pawn:
+      //          l = 0;
+      //          break;
+      //        case w_bishop:
+      //          l = 1;
+      //          break;
+      //        case w_knight:
+      //          l = 2;
+      //          break;
+      //        case w_rook:
+      //          l = 3;
+      //          break;
+      //        case w_queen:
+      //          l = 4;
+      //          break;
+      //        case w_king:
+      //          l = 5;
+      //          break;
+      //        case b_pawn:
+      //          l = 6;
+      //          break;
+      //        case b_bishop:
+      //          l = 7;
+      //          break;
+      //        case b_knight:
+      //          l = 8;
+      //          break;
+      //        case b_rook:
+      //          l = 9;
+      //          break;
+      //        case b_queen:
+      //          l = 10;
+      //          break;
+      //        case b_king:
+      //          l = 11;
+      //          break;
+      //        default:
+      //          l = 0; //shouldn't happen but just in case
+      //      }
+      //      BS_array[64*l + 8*i + j] = 1.0;
+      //    }
+      //  }
+      //}
+      //BS_array[12*64 + 0] = -1.0 + 2.0*(BS.turn%2);
+      //BS_array[12*64 + 1] = BS.w_castle_kingside?1.0:0.0;
+      //BS_array[12*64 + 2] = BS.w_castle_queenside?1.0:0.0;
+      //BS_array[12*64 + 3] = BS.b_castle_kingside?1.0:0.0;
+      //BS_array[12*64 + 4] = BS.b_castle_queenside?1.0:0.0;
 
       N->eval((float*)&BS_array, (float*)&result);
       return result[0] / (result[0]+result[1]);
@@ -240,8 +241,8 @@ class MonteCarloTree {
 
         float win;
         if (N->visits == 1) {
-          // if node is unvisited, run rollout and backpropagate
-          win = rollout(N->state);
+          // if node is unvisited, run evaluate and backpropagate
+          win = evaluate(N->state);
         }
         else if (N->endstate) {
           // if endstate, backpropagate score stored in game state
@@ -250,15 +251,15 @@ class MonteCarloTree {
             win = N->state.winner;
         }
         else {
-          // otherwise, expand leaf node and pick a child node to rollout
+          // otherwise, expand leaf node and pick a child node to evaluate
           expand(N);
           if (!N->children.empty()) {
             int r = rand() % N->children.size();
             N = N->children[r];
           }
-          win = rollout(N->state);
+          win = evaluate(N->state);
         }
-        if (!White)
+        if (!Black)
           win = 1.0 - win;
         backpropagate(N, win);
       }
